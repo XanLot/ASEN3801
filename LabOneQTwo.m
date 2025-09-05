@@ -86,7 +86,7 @@ for k = 1:num_altitudes
     for l = 1:vel_num
         wind_vel = [l; 0; 0]; % Change wind velocities
         [t, x] = ode45(@(t, x) objectEOM(t, x, rho, Cd, A, m, g, wind_vel), [0 10], x_0, options);
-        % Store the final x - displacement for the current altitude
+        % Store the final x - distance for the current altitude
         finalDistanceAlt(k, l) = sqrt(x(end, 1)^2 + x(end,2)^2);
     end
     plot(1:vel_num, finalDistanceAlt(k, :), 'DisplayName', sprintf('Altitude: %d m', altitudes(k)));
@@ -99,6 +99,59 @@ ylabel('Distance from Origin (m)');
 legend show;
 grid on;
 hold off;
+
+
+
+% Plot minimum landing distance vs altitude
+
+for m = 1:num_altitudes
+    % Store the minimum distance at each altitude.
+    minDistance(m) = min(finalDistanceAlt(m,:));
+end
+figure(5)
+plot(altitudes,minDistance);
+title('Altitude vs Minimum Landing Distance')
+xlabel('Altitude (m)')
+ylabel('Distance from Origin (m)');
+grid on
+
+
+
+% Limited Kinetic Energy
+KE = 20; % In Joules
+u_v = [0, 1/sqrt(2), -1/sqrt(2)]; % y-z unit vector in launch direction
+max_mass = 70; % (g)
+wind_vel = [0; 0; 0];
+diff = 10; % Increments of Wind we want to test (0 -> 10 -> 20, or 0 -> 1 -> 2 etc.)
+for h = 1:max_mass % Mass goes from 1g -> 100g
+    m = h * 10^-3; % in kg
+    v_mag = sqrt(40/m);
+    v = v_mag * u_v;
+    x_0_mass = [0; 0; 0; 0; v(2); v(3)];
+    counter = 1;
+    for f = 0:diff:vel_num
+        wind_vel = [f; 0; 0];
+    % Calculate the distance from origin
+        [t, x] = ode45(@(t, x) objectEOM(t, x, rho, Cd, A, m, g, wind_vel), [0 10], x_0_mass, options);
+        massDistance(h,counter) = sqrt(x(end,1)^2 + x(end,2)^2);
+        counter = counter + 1;
+    end
+end
+
+
+figure(6)
+hold on
+wind = 0; % Initialize
+for p = 1:(counter - 1) 
+    plot(1:max_mass, massDistance(:,p), 'DisplayName', sprintf('Windspeed: %d m/s', wind))
+    wind = wind + diff;
+end
+title('Mass vs Landing Distance');
+xlabel('Mass (g)');
+ylabel('Distance from Origin (m)');
+legend show
+grid on;
+
 
 function xdot = objectEOM(t,x,rho,Cd,A,m,g,wind_vel)
     xdot = zeros(6,1);
@@ -123,4 +176,3 @@ function xdot = objectEOM(t,x,rho,Cd,A,m,g,wind_vel)
     end
     
 end
-
