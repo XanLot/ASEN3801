@@ -43,13 +43,16 @@ set(gca, 'ZDir', 'reverse');
 
 
 % Find effect of wind velocities (part d)
-vel_num = 20;
+% d1
+vel_num = 100;
 finalDisplacement = zeros(1,vel_num);
+totalDistance = zeros(1,vel_num);
 for l = 1:vel_num
     wind_vel = [l;0;0]; % Change wind velocities
     [t,x] = ode45(@(t,x) objectEOM(t,x,rho,Cd,A,m,g,wind_vel), [0 10],x_0,options);
     % Store the final x - displacement
     finalDisplacement(l) = x(end,1);
+    totalDistance(l) = sqrt(x(end,1)^2 + x(end,2)^2);
 end
 
 figure(2)
@@ -59,14 +62,52 @@ xlabel('Wind Velocity (m/s)');
 ylabel('Displacement (m)');
 grid on;
 
+% d2
+
+figure(3)
+plot(1:vel_num, totalDistance)
+title('Ending Distance vs Wind Velocity');
+xlabel('Wind Velocity (m/s)');
+ylabel('Distance from Origin (m)');
+grid on;
+
+
+% Calculate the Distance vs Windspeed at different altitudes
+% d3
+altitudes = 0:1000:10000; % Altitudes in meters
+num_altitudes = length(altitudes);
+finalDistanceAlt = zeros(num_altitudes, vel_num);
+
+figure(4);
+hold on;
+
+for k = 1:num_altitudes
+    rho = stdatmo(altitudes(k)); % Get air density at the current altitude
+    for l = 1:vel_num
+        wind_vel = [l; 0; 0]; % Change wind velocities
+        [t, x] = ode45(@(t, x) objectEOM(t, x, rho, Cd, A, m, g, wind_vel), [0 10], x_0, options);
+        % Store the final x - displacement for the current altitude
+        finalDistanceAlt(k, l) = sqrt(x(end, 1)^2 + x(end,2)^2);
+    end
+    plot(1:vel_num, finalDistanceAlt(k, :), 'DisplayName', sprintf('Altitude: %d m', altitudes(k)));
+end
+
+
+title('Distance vs Wind Velocity at Different Altitudes');
+xlabel('Wind Velocity (m/s)');
+ylabel('Distance from Origin (m)');
+legend show;
+grid on;
+hold off;
+
 function xdot = objectEOM(t,x,rho,Cd,A,m,g,wind_vel)
     xdot = zeros(6,1);
-    xdot(1) = x(4) + wind_vel(1);
-    xdot(2) = x(5) + wind_vel(2);
-    xdot(3) = x(6) + wind_vel(3);
+    xdot(1) = x(4);
+    xdot(2) = x(5);
+    xdot(3) = x(6);
 
     % Calculate Drag Force
-    v = [x(4); x(5); x(6)];
+    v = [x(4) - wind_vel(1); x(5) - wind_vel(2); x(6) - wind_vel(3)];
     v_mag = norm(v);
     D = 0.5 * rho * v_mag^2 * Cd * A;
     % Get direction of airflow
@@ -82,3 +123,4 @@ function xdot = objectEOM(t,x,rho,Cd,A,m,g,wind_vel)
     end
     
 end
+
